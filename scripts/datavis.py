@@ -89,6 +89,7 @@ class SerialHeaderManager:
             raw=self._file.read(1)
             data+=raw
             data[:]=data[-4:]
+        print('Head found!')
 
     def __find_tail(self):
         data=bytearray(b'1234')

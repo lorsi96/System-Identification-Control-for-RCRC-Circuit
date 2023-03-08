@@ -1,6 +1,8 @@
 /* ************************************************************************* */
 /*                             Public Inclusions                             */
 /* ************************************************************************* */
+#include "FreeRTOS.h"
+#include "task.h"
 #include "arm_const_structs.h"
 #include "arm_math.h"
 #include "sapi.h"
@@ -13,31 +15,8 @@
 #define PROG_FREQ_CYCLES (EDU_CIAA_NXP_CLOCK_SPEED / PROG_LOOP_HZ)
 
 #define UART_BAUDRATE 460800
-
-
-typedef int16_t(*DacSampleProvider_t)();
-
-/* ************************************************************************* */
-typedef struct {
-    uint32_t ticksThreshold; 
-    uint32_t ticksThresholdHalf;
-    uint32_t tickCount;
-} SquareWaveDacProvider_t;
-
-int16_t SquareWaveDacProvider_getSample() {
-    static SquareWaveDacProvider_t self = {
-        .ticksThreshold = PROG_LOOP_HZ / SQ_WAVE_HZ, 
-        .ticksThresholdHalf = PROG_LOOP_HZ / SQ_WAVE_HZ / 2,
-        .tickCount = 0
-    };
-
-    if(self.tickCount >= self.ticksThreshold) {
-        self.tickCount = 0;
-    }
-    return self.tickCount++ > self.ticksThresholdHalf ? 0x7FFF : 0x8000;
-}
-
 #define ADC_DATA_SZ 512
+
 /* ***************************** Data Transfer ***************************** */
 static struct header_struct {
     char head[4];
@@ -48,43 +27,52 @@ static struct header_struct {
 } header = {
     "head", 0, ADC_DATA_SZ, PROG_LOOP_HZ, "tail"};
 
-q15_t adc_sample = 0;
-uint16_t dac_sample = 512;
+void dacTask(void *_) {
+    TickType_t lastWakeTime = xTaskGetTickCount();
+    for(;;) {
+        dacWrite(DAC, 0);
+        vTaskDelayUntil(&lastWakeTime, 50 /  portTICK_PERIOD_MS);
+        dacWrite(DAC, 0xFFFF);
+        vTaskDelayUntil(&lastWakeTime, 50 /  portTICK_PERIOD_MS);
+    }
+}
 
-/* ************************************************************************* */
-/*                                    Code                                   */
-/* ************************************************************************* */
-static DacSampleProvider_t dacProvider = SquareWaveDacProvider_getSample; 
-
-
-int main(void) {
-
-
-
-    boardConfig();
-    uartConfig(UART_USB, UART_BAUDRATE);
-    adcConfig(ADC_ENABLE);
-    dacConfig(DAC_ENABLE);
-    cyclesCounterInit(EDU_CIAA_NXP_CLOCK_SPEED);
-    dacWrite(DAC, 512);  // Start at 0.
-    static uint32_t uartSamplesCount = 0;
-    for (;;) {
-        cyclesCounterReset();
-
-        /* Send ADC data through UART. */
-        uint16_t raw_adc = adcRead(CH2);
+void adcTask(void *_) {
+    q15_t adc_sample = 0;
+    uint32_t uartSamplesCount = 0;
+    for(;;) {
+        uint16_t raw_adc = adcRead(CH1);
         adc_sample = (((raw_adc - 512)) << 6);
         uartWriteByteArray(UART_USB, (uint8_t*)&adc_sample, sizeof(adc_sample));
-        // uartReadByte(UART_USB, &recv_by);
-
-        dacWrite(DAC, (dacProvider() >> 6) + 512);
-
         if(++uartSamplesCount == ADC_DATA_SZ) {
             uartWriteByteArray(UART_USB, (uint8_t*)&header, sizeof(header));
             uartSamplesCount = 0;
         }
-
-        while (cyclesCounterRead() < PROG_FREQ_CYCLES)
-            ;
+        vTaskDelay(1000 / PROG_LOOP_HZ / portTICK_PERIOD_MS);
     }
+}
+
+int main(void) {
+    // HW Config.
+    boardConfig();
+    uartConfig(UART_USB, UART_BAUDRATE);
+    adcConfig(ADC_ENABLE);
+    dacConfig(DAC_ENABLE);
+
+    // Tasks creation.
+    xTaskCreate(  dacTask,            /* Pointer to the function that implements the task. */
+                  "dacTask",                 /* Text name for the task.  This is to facilitate debugging only. */
+                  configMINIMAL_STACK_SIZE, /* Stack depth - most small microcontrollers will use much less stack than this. */
+                  NULL,    /* Pass the text to be printed in as the task parameter. */
+                  tskIDLE_PRIORITY+1,       /* This task will run at priority 1. */
+                  NULL );   
+    xTaskCreate(  adcTask,            /* Pointer to the function that implements the task. */
+                  "adcTask",                 /* Text name for the task.  This is to facilitate debugging only. */
+                  configMINIMAL_STACK_SIZE, /* Stack depth - most small microcontrollers will use much less stack than this. */
+                  NULL,    /* Pass the text to be printed in as the task parameter. */
+                  tskIDLE_PRIORITY+1,       /* This task will run at priority 1. */
+                  NULL );   
+    vTaskStartScheduler();
+    for(;;);
+    return 0;
 }
