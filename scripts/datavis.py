@@ -128,7 +128,7 @@ header = {
     "head": b"head", 
     "id": 0, 
     "N":512, 
-    "fs": 8000, 
+    "fs": 1000, 
     "tail":b"tail"
 }
 

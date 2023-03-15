@@ -31,9 +31,9 @@ void dacTask(void *_) {
     TickType_t lastWakeTime = xTaskGetTickCount();
     for(;;) {
         dacWrite(DAC, 0);
-        vTaskDelayUntil(&lastWakeTime, 50 /  portTICK_PERIOD_MS);
+        vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(50));
         dacWrite(DAC, 0xFFFF);
-        vTaskDelayUntil(&lastWakeTime, 50 /  portTICK_PERIOD_MS);
+        vTaskDelayUntil(&lastWakeTime,  pdMS_TO_TICKS(50));
     }
 }
 
@@ -48,7 +48,7 @@ void adcTask(void *_) {
             uartWriteByteArray(UART_USB, (uint8_t*)&header, sizeof(header));
             uartSamplesCount = 0;
         }
-        vTaskDelay(1000 / PROG_LOOP_HZ / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(1000 / PROG_LOOP_HZ));
     }
 }
 
