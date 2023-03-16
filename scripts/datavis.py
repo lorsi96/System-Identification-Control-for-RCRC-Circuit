@@ -22,6 +22,10 @@ def stdint_read(f:BinaryIO, size_bytes=2, signed=False) -> int:
         raw += f.read(1)
     return int.from_bytes(raw, "little", signed=signed)
 
+def hex_read(f:BinaryIO, size_bytes=2, signed=False):
+    return hex(stdint_read(f, size_bytes, signed))
+
+
 # ********************************* Streams ********************************* #
 class Streamable(Protocol):
     def open(self) -> BinaryIO:
@@ -89,7 +93,6 @@ class SerialHeaderManager:
             raw=self._file.read(1)
             data+=raw
             data[:]=data[-4:]
-        print('Head found!')
 
     def __find_tail(self):
         data=bytearray(b'1234')
@@ -129,6 +132,11 @@ header = {
     "id": 0, 
     "N":512, 
     "fs": 1000, 
+    "coeff1": 0,
+    "coeff2": 0,
+    "dbg1": 0,
+    "dbg2": 0,
+    "dbg3": 0,
     "tail":b"tail"
 }
 
@@ -136,6 +144,11 @@ header_spec = {
     "id": functools.partial(stdint_read, size_bytes=4), 
     "N": stdint_read, 
     "fs": stdint_read, 
+    "coeff1": hex_read, 
+    "coeff2": hex_read, 
+    "dbg1": hex_read,
+    "dbg2": hex_read,
+    "dbg3": hex_read,
 }
 
 
@@ -156,6 +169,7 @@ def init():
 def update(t):
     global header,rec, outfile
     found_h, raw_data  = serial_manager.wait_for_packet() 
+    print(found_h)
     id, N, fs = found_h["id"], found_h["N"], found_h["fs"]
     
     adc   = np.array(raw_data)
