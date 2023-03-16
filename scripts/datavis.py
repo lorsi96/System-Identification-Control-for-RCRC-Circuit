@@ -126,14 +126,13 @@ fftAxe.set_xlabel('Time [Sec]')
 fftAxe.set_ylabel('Mag')
 
 plt.tight_layout()
-
+COEFFSN = 10 
 header = {
     "head": b"head", 
     "id": 0, 
     "N":512, 
-    "fs": 1000, 
-    "coeff1": 0,
-    "coeff2": 0,
+    "fs": 1000,
+    **{f"coeff{n}": 0 for n in range(COEFFSN)}, 
     "dbg1": 0,
     "dbg2": 0,
     "dbg3": 0,
@@ -144,8 +143,7 @@ header_spec = {
     "id": functools.partial(stdint_read, size_bytes=4), 
     "N": stdint_read, 
     "fs": stdint_read, 
-    "coeff1": hex_read, 
-    "coeff2": hex_read, 
+    **{f"coeff{n}": hex_read for n in range(COEFFSN)}, 
     "dbg1": hex_read,
     "dbg2": hex_read,
     "dbg3": hex_read,

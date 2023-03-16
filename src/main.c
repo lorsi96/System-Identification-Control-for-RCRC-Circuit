@@ -18,7 +18,7 @@
 
 #define UART_BAUDRATE 460800
 #define ADC_DATA_SZ 512
-#define numTaps 2
+#define numTaps 10 
 
 /* ***************************** Data Transfer ***************************** */
 static struct header_struct {
@@ -70,17 +70,17 @@ void prbsWaveGenTask(void *_) {
 void systemIdentificationTask(void *_) {
     TickType_t lastWakeTime = xTaskGetTickCount();
     static arm_lms_instance_q15 lms = {0};
-    arm_lms_init_q15(&lms, numTaps, coeffs, stateBuffer, 0x0200, ADC_DATA_SZ, 2);
+    arm_lms_init_q15(&lms, numTaps, coeffs, stateBuffer, 0x0020, ADC_DATA_SZ, 3);
     for(;;) {
         dacBuffer[buffcount] = ciaaOutputSystemInput;
-        adcBuffer[buffcount] = (q15_t)((adcRead(CH1) - 512) << 6);
+        adcBuffer[buffcount] = (((q15_t)adcRead(CH1) - 512) << 6);
         uartWriteByteArray(UART_USB, (uint8_t*)&foutBuffer[buffcount], sizeof(q15_t));
         if(++buffcount == ADC_DATA_SZ) {
-            header.dbg1 = foutBuffer[buffcount - 1];
+            arm_rms_q15(errBuffer, ADC_DATA_SZ, &header.dbg1);
             header.dbg2 = coeffs[0]; 
             header.dbg3 = errBuffer[buffcount - 1];
             arm_lms_q15(&lms, dacBuffer, adcBuffer, foutBuffer, errBuffer, ADC_DATA_SZ);
-            memcpy(coeffs, header.coeffs, sizeof(q15_t) * numTaps);
+            memcpy(header.coeffs, coeffs, sizeof(q15_t) * numTaps);
             uartWriteByteArray(UART_USB, (uint8_t*)&header, sizeof(header));
             buffcount = 0;
         }
