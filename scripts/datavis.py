@@ -132,10 +132,10 @@ header = {
     "id": 0, 
     "N":512, 
     "fs": 1000,
-    **{f"coeff{n}": 0 for n in range(COEFFSN)}, 
-    "dbg1": 0,
-    "dbg2": 0,
-    "dbg3": 0,
+    # **{f"coeff{n}": 0 for n in range(COEFFSN)}, 
+    # "dbg1": 0,
+    # "dbg2": 0,
+    # "dbg3": 0,
     "tail":b"tail"
 }
 
@@ -143,9 +143,9 @@ header_spec = {
     "id": functools.partial(stdint_read, size_bytes=4), 
     "N": stdint_read, 
     "fs": stdint_read, 
-    **{f"coeff{n}": hex_read for n in range(COEFFSN)}, 
-    "dbg1": hex_read,
-    "dbg2": hex_read,
+    # **{f"coeff{n}": hex_read for n in range(COEFFSN)}, 
+    # "dbg1": hex_read,
+    # "dbg2": hex_read,
     "dbg3": hex_read,
 }
 

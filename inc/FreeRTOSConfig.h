@@ -57,10 +57,10 @@ extern int DbgConsole_Printf( const char *fmt_s, ... );
 #define configUSE_TICKLESS_IDLE                      0
 #define configUSE_DAEMON_TASK_STARTUP_HOOK           0
 #define configCPU_CLOCK_HZ                           ( SystemCoreClock )
-#define configTICK_RATE_HZ                           ( ( TickType_t ) 10000 ) // 1000 ticks per second => 1ms tick rate
+#define configTICK_RATE_HZ                           ( ( TickType_t ) 1000 ) // 1000 ticks per second => 1ms tick rate
 #define configMAX_PRIORITIES                         ( 7 )
-#define configMINIMAL_STACK_SIZE                     ( ( uint16_t ) 100 )
-#define configTOTAL_HEAP_SIZE                        ( ( size_t ) ( 8 * 1024 ) )    /* 85 Kbytes. */
+#define configMINIMAL_STACK_SIZE                     ( ( uint16_t ) 90 )
+#define configTOTAL_HEAP_SIZE                        ( ( size_t ) ( 16 * 1024 ) )    /* 85 Kbytes. */
 #define configMAX_TASK_NAME_LEN                      ( 16 )
 #define configUSE_TRACE_FACILITY                     1
 #define configUSE_16_BIT_TICKS                       0
@@ -75,9 +75,6 @@ extern int DbgConsole_Printf( const char *fmt_s, ... );
 #define configGENERATE_RUN_TIME_STATS                0
 #define configOVERRIDE_DEFAULT_TICK_CONFIGURATION    1
 #define configRECORD_STACK_HIGH_ADDRESS              1
-
-// Add old API compatibility
-#define configENABLE_BACKWARD_COMPATIBILITY          1
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                        0
