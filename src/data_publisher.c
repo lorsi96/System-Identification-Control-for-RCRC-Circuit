@@ -32,8 +32,10 @@ void data_publisher_update_extra_data(data_publisher_t* instance, uint16_t extra
 }
 
 
-void data_publisher_update_sample(data_publisher_t* instance, uint16_t sample) {
-    instance->data_buffer[instance->buffer_i++] = sample;
+void data_publisher_update_samples(data_publisher_t* instance, uint16_t sample, uint16_t sampleb) {
+    instance->data_buffer[instance->buffer_i] = sample;
+    instance->data_buffer_b[instance->buffer_i++] = sampleb;
+    __data_publisher_send_data((uint8_t*)&sampleb, sizeof(sampleb));
     __data_publisher_send_data((uint8_t*)&sample, sizeof(sample));
     if(instance->buffer_i == DATA_PUBLISHER_DATA_BUFFER_SZ) {
         __data_publisher_send_data(

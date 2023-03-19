@@ -13,7 +13,7 @@ STREAM_FILE=("/dev/ttyUSB1", "serial")
 OUTPUTFILEPATH='out/output.csv'
 HeaderSpec = Mapping[str, Callable[[BinaryIO], int]]
 Header = Mapping[str, Any]
-SerialData = Tuple[Header, List[float]]
+SerialData = Tuple[Header, List[float], List[float]]
 
 # ********************************* Parsers ********************************* #
 def stdint_read(f:BinaryIO, size_bytes=2, signed=False) -> int:
@@ -70,7 +70,7 @@ class SerialHeaderManager:
     def wait_for_packet(self) -> SerialData:
         return (
             self.__find_header(), 
-            self.__read_data(self._last_packet['N']))
+            *self.__read_data(self._last_packet['N']))
     
     def __find_header(self) -> Mapping[str, Any]:
         found = False 
@@ -83,9 +83,9 @@ class SerialHeaderManager:
         self._last_packet = ret
         return ret
     
-    def __read_data(self, n:int) -> List[float]:
+    def __read_data(self, n:int) -> Tuple[List[float], List[float]] :
         parse = lambda: stdint_read(self._file, signed=True) / 0xFFFF * 1.65
-        return [parse() for _ in range(n)]
+        return zip(*([parse(), parse()] for _ in range(n)))  # type: ignore
 
     def __find_head(self):
         data=bytearray(len(SerialHeaderManager.HEAD))
@@ -116,14 +116,14 @@ adcAxe.set_title('Scope')
 adcAxe.set_xlabel('Time [Sec]')
 adcAxe.set_ylabel('Mag')
 
-fftAxe = fig.add_subplot ( 2,1,2                  )
-fftLn, = plt.plot        ( [],[],'b-',linewidth=4 )
-fftAxe.grid              ( True                   )
-# fftAxe.set_ylim          ( 0 ,0.25                )
-fftAxe.set_ylim          ( -0.05 ,0.05            )
-fftAxe.set_title('Dbg Signal')
-fftAxe.set_xlabel('Time [Sec]')
-fftAxe.set_ylabel('Mag')
+dacAxe = fig.add_subplot ( 2,1,2                  )
+dacLn, = plt.plot        ( [],[],'b-',linewidth=4 )
+dacAxe.grid              ( True                   )
+# dacAxe.set_ylim          ( 0 ,0.25                )
+dacAxe.set_ylim          ( -1.65 ,1.65            )
+dacAxe.set_title('Scope')
+dacAxe.set_xlabel('Time [Sec]')
+dacAxe.set_ylabel('Mag')
 
 plt.tight_layout()
 COEFFSN = 10 
@@ -151,7 +151,7 @@ header_spec = {
 
 
 outfile = open(OUTPUTFILEPATH, 'w')
-csv_writer = csv.DictWriter(outfile, fieldnames=('Data',))
+csv_writer = csv.DictWriter(outfile, fieldnames=('Data', 'Reference',))
 csv_writer.writeheader()
 stream = SerialStreamable()
 stream_file = stream.open()
@@ -162,24 +162,28 @@ rec=np.ndarray(1).astype(np.int16)
 def init():
     global rec
     rec=np.ndarray(1).astype(np.int16)
-    return adcLn, fftLn
+    return adcLn, dacLn
 
 def update(t):
     global header,rec, outfile
-    found_h, raw_data  = serial_manager.wait_for_packet() 
+    found_h, raw_data, raw_data_b  = serial_manager.wait_for_packet() 
     print(found_h)
     id, N, fs = found_h["id"], found_h["N"], found_h["fs"]
     
     adc   = np.array(raw_data)
+    dac   =  np.array(raw_data_b)
     time  = np.arange(0, N/fs, 1/fs)
-    csv_writer.writerows(map(lambda v: {'Data': v}, adc))
+    csv_writer.writerows(map(lambda v: {'Data': v[0], 'Reference': v[1]}, zip(adc, dac)))
 
     adcAxe.set_xlim ( 0    ,N/fs )
     adcLn.set_data  ( time ,adc  )
 
+    dacAxe.set_xlim ( 0    ,N/fs )
+    dacLn.set_data  ( time ,dac  )
+
     rec=np.concatenate((rec,((adc/1.65)*2**(15-1)).astype(np.int16)))
 
-    return adcLn, fftLn
+    return adcLn, dacLn
 
 
 if __name__ == '__main__':

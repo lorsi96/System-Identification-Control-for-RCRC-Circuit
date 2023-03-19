@@ -22,12 +22,13 @@ typedef struct {
 typedef struct {
     data_publisher_header_t header;
     uint16_t data_buffer[DATA_PUBLISHER_DATA_BUFFER_SZ];
+    uint16_t data_buffer_b[DATA_PUBLISHER_DATA_BUFFER_SZ];
     uint16_t buffer_i;
 } data_publisher_t;
 
 void data_publisher_init(data_publisher_t* instance, uint16_t sr_hz); 
 
-void data_publisher_update_sample(data_publisher_t* instance, uint16_t sample); 
+void data_publisher_update_samples(data_publisher_t* instance, uint16_t sample, uint16_t sampleb); 
 
 void data_publisher_update_extra_data(data_publisher_t* instance, uint16_t extra_data, uint16_t n_extra_data); 
 
