@@ -8,6 +8,7 @@
 
 #define SAMPLING_FREQ_HZ 1000 
 #define WVFM_FREQ_HZ  10
+#define PRBS_FREQ_HZ 100 
 
 static int16_t last_dac = 0;
 
@@ -26,7 +27,7 @@ static void prbsWaveGenTask(void *_) {
     for(;;) {
         last_dac = rand() % 1024; 
         dacWrite(DAC, last_dac);
-        vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(1000 / WVFM_FREQ_HZ));
+        vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(1000 / PRBS_FREQ_HZ));
     }
 }
 
