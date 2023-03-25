@@ -10,7 +10,7 @@ from typing import Mapping, Any, Callable, BinaryIO, Dict, List, Tuple, Protocol
 import serial
 
 STREAM_FILE=("/dev/ttyUSB1", "serial")
-OUTPUTFILEPATH='out/output.csv'
+OUTPUTFILEPATH='output.csv'
 HeaderSpec = Mapping[str, Callable[[BinaryIO], int]]
 Header = Mapping[str, Any]
 SerialData = Tuple[Header, List[float], List[float]]
