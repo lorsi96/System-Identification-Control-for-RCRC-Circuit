@@ -2,6 +2,8 @@
 #define PID_CONTROLLER_H
 
 typedef struct {
+	/* Mode */
+	unsigned short bypassPid; /* Disable pid entirely.*/
 
 	/* Controller gains */
 	float Kp;
@@ -18,6 +20,9 @@ typedef struct {
 	/* Integrator limits */
 	float limMinInt;
 	float limMaxInt;
+
+	/* Deadzone */
+	float deadZone;
 
 	/* Sample time (in seconds) */
 	float T;

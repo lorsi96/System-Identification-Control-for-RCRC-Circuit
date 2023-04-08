@@ -12,13 +12,14 @@
 #define WVFM_FREQ_HZ 10
 #define PRBS_FREQ_HZ 100
 
-static int16_t last_dac = 0;
+static int16_t DAC_VALUES[] = {0x100, 0x300} ;
+static uint8_t dac_i = 0;
+static int16_t last_dac = 0x100;
 
 static void squareWaveGenTask(void *_) {
     TickType_t lastWakeTime = xTaskGetTickCount();
     for (;;) {
-        last_dac ^= 0xFFFF;
-        last_dac &= 0xFFFF;
+        last_dac = DAC_VALUES[++dac_i % 2];
         dacWrite(DAC, last_dac);
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(1000 / WVFM_FREQ_HZ / 2));
     }
@@ -52,7 +53,7 @@ int runStepResponseApp(void) {
     dacConfig(DAC_ENABLE);
 
     /* Task creation. */
-    xTaskCreate(prbsWaveGenTask, "waveformTask", configMINIMAL_STACK_SIZE, NULL,
+    xTaskCreate(squareWaveGenTask, "waveformTask", configMINIMAL_STACK_SIZE, NULL,
                 tskIDLE_PRIORITY + 1, NULL);
     xTaskCreate(systemIdentificationTask, "systemIdentificationTask",
                 configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);

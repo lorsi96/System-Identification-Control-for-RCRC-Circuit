@@ -105,27 +105,41 @@ class SerialHeaderManager:
 
 
 # ********************************* Plotting ******************************** #
-fig = plt.figure(1)
+# fig = plt.figure(1)
+# adcAxe = fig.add_subplot ( 2,1,1                  )
+# adcLn, = plt.plot        ( [],[],'r-',linewidth=4 )
+# adcAxe.grid              ( True                   )
+# adcAxe.set_ylim          ( -1.65 ,1.65            )
+# adcAxe.set_title('Scope')
+# adcAxe.set_xlabel('Time [Sec]')
+# adcAxe.set_ylabel('Mag')
+
+# dacAxe = fig.add_subplot ( 2,1,2                  )
+# dacLn, = plt.plot        ( [],[],'b-',linewidth=4 )
+# dacAxe.grid              ( True                   )
+# # dacAxe.set_ylim          ( 0 ,0.25                )
+# dacAxe.set_ylim          ( -1.65 ,1.65            )
+# dacAxe.set_title('Scope')
+# dacAxe.set_xlabel('Time [Sec]')
+# dacAxe.set_ylabel('Mag')
+
+# plt.tight_layout()
+
+fig, ax = plt.subplots(figsize=(8, 6))
 
 
-adcAxe = fig.add_subplot ( 2,1,1                  )
-adcLn, = plt.plot        ( [],[],'r-',linewidth=4 )
-adcAxe.grid              ( True                   )
-adcAxe.set_ylim          ( -1.65 ,1.65            )
-adcAxe.set_title('Scope')
-adcAxe.set_xlabel('Time [Sec]')
-adcAxe.set_ylabel('Mag')
+dacLn, = ax.plot([], [], 'b-', linewidth=2, label='DAC Data')
+adcLn, = ax.plot([], [], 'r-', linewidth=2, label='ADC Data')
 
-dacAxe = fig.add_subplot ( 2,1,2                  )
-dacLn, = plt.plot        ( [],[],'b-',linewidth=4 )
-dacAxe.grid              ( True                   )
-# dacAxe.set_ylim          ( 0 ,0.25                )
-dacAxe.set_ylim          ( -1.65 ,1.65            )
-dacAxe.set_title('Scope')
-dacAxe.set_xlabel('Time [Sec]')
-dacAxe.set_ylabel('Mag')
+ax.grid(True)
+ax.set_ylim(-1., 1.)
+ax.set_title('Scope')
+ax.set_xlabel('Time [Sec]')
+ax.set_ylabel('Mag')
+ax.legend(loc='upper right')
 
 plt.tight_layout()
+
 COEFFSN = 10 
 header = {
     "head": b"head", 
@@ -151,13 +165,14 @@ header_spec = {
 
 
 outfile = open(OUTPUTFILEPATH, 'w')
-csv_writer = csv.DictWriter(outfile, fieldnames=('Data', 'Reference',))
+csv_writer = csv.DictWriter(outfile, fieldnames=('Time', 'ADC', 'DAC',))
 csv_writer.writeheader()
 stream = SerialStreamable()
 stream_file = stream.open()
 serial_manager = SerialHeaderManager(stream_file, header_spec, header)
 
 rec=np.ndarray(1).astype(np.int16)
+timestamp=0
 
 def init():
     global rec
@@ -165,7 +180,7 @@ def init():
     return adcLn, dacLn
 
 def update(t):
-    global header,rec, outfile
+    global header,rec, outfile, timestamp
     found_h, raw_data, raw_data_b  = serial_manager.wait_for_packet() 
     print(found_h)
     id, N, fs = found_h["id"], found_h["N"], found_h["fs"]
@@ -173,13 +188,13 @@ def update(t):
     adc   = np.array(raw_data)
     dac   =  np.array(raw_data_b)
     time  = np.arange(0, N/fs, 1/fs)
-    csv_writer.writerows(map(lambda v: {'Data': v[0], 'Reference': v[1]}, zip(adc, dac)))
+    time_vect =  time + timestamp
+    timestamp += N/fs
+    csv_writer.writerows(map(lambda v: {'Time': v[2], 'ADC': v[0], 'DAC': v[1]}, zip(adc, dac, time_vect)))
 
-    adcAxe.set_xlim ( 0    ,N/fs )
-    adcLn.set_data  ( time ,adc  )
-
-    dacAxe.set_xlim ( 0    ,N/fs )
-    dacLn.set_data  ( time ,dac  )
+    ax.set_xlim (0, N/fs)
+    dacLn.set_data(time, dac)
+    adcLn.set_data(time, adc)
 
     rec=np.concatenate((rec,((adc/1.65)*2**(15-1)).astype(np.int16)))
 
