@@ -84,8 +84,9 @@ class SerialHeaderManager:
         return ret
     
     def __read_data(self, n:int) -> Tuple[List[float], List[float]] :
-        parse = lambda: stdint_read(self._file, signed=True) / 0xFFFF * 1.65
-        return zip(*([parse(), parse()] for _ in range(n)))  # type: ignore
+        parse = lambda: stdint_read(self._file, signed=True) / 0x7FFF
+        ret = zip(*([parse(), parse()] for _ in range(n)))  # type: ignore
+        return list(next(ret)), list(next(ret))
 
     def __find_head(self):
         data=bytearray(len(SerialHeaderManager.HEAD))
@@ -132,7 +133,7 @@ dacLn, = ax.plot([], [], 'b-', linewidth=2, label='DAC Data')
 adcLn, = ax.plot([], [], 'r-', linewidth=2, label='ADC Data')
 
 ax.grid(True)
-ax.set_ylim(-1., 1.)
+ax.set_ylim(-1.1, 1.1)
 ax.set_title('Scope')
 ax.set_xlabel('Time [Sec]')
 ax.set_ylabel('Mag')
@@ -181,7 +182,8 @@ def init():
 
 def update(t):
     global header,rec, outfile, timestamp
-    found_h, raw_data, raw_data_b  = serial_manager.wait_for_packet() 
+    found_h, raw_data_b, raw_data  = serial_manager.wait_for_packet() 
+    raw_data_b[0] = raw_data_b[1]
     print(found_h)
     id, N, fs = found_h["id"], found_h["N"], found_h["fs"]
     
