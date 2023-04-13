@@ -24,7 +24,7 @@ if __name__ == '__main__':
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    OUTPUTFILE = 'out/ls_output_data.csv'
+    OUTPUTFILE = 'csvs/step_resp.csv'
     SR_F_HZ = 1000
 
     data2 = pd.read_csv(OUTPUTFILE)

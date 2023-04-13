@@ -183,7 +183,7 @@ def init():
 def update(t):
     global header,rec, outfile, timestamp
     found_h, raw_data_b, raw_data  = serial_manager.wait_for_packet() 
-    raw_data_b[0] = raw_data_b[1]
+    raw_data_b = raw_data_b[1:] + [raw_data_b[-1]]
     print(found_h)
     id, N, fs = found_h["id"], found_h["N"], found_h["fs"]
     

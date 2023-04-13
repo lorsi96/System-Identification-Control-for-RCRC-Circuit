@@ -13,6 +13,26 @@
 #define WVFM_FREQ_HZ 10
 #define PRBS_FREQ_HZ 100
 
+
+
+typedef struct {
+    float32_t K[2];
+    float32_t k0;
+} PPController_t;
+
+float32_t PPController_compute(PPController_t* self, float32_t x1, float32_t x2, float32_t r) {
+    return r * self->k0 - (self->K[0] * x1 + self->K[1] * x2);
+}
+
+PPController_t pp_cnt = {
+    .K = {
+        0.37964295, 
+        0.60778899
+    },
+    .k0 = 1.9874319426885374 
+};
+
+
 inline static q15_t dn10b_to_q15(uint16_t dn) {
     return ((q15_t)dn - 512) << 6;  // -1 to 1
 }
@@ -45,8 +65,8 @@ static PIDController pid = {
 	.Ki = 300.0, 
 	.Kd = 0.005,
 	.tau = 1. / SAMPLING_FREQ_HZ,
-	.limMin = -1.,
-	.limMax = 1.,
+	.limMin = -1,
+	.limMax = 1,
 	.limMinInt = -10.0,
 	.limMaxInt = 10.0,
     .deadZone = 0.000, 
@@ -66,8 +86,10 @@ static void pidTask(void *_) {
     TickType_t lastWakeTime = xTaskGetTickCount();
     volatile uint32_t dacDn = 0;
     volatile q15_t adcQ;
+    volatile q15_t adc2Q;
     float32_t pidOutputF32;
     volatile float32_t adcF32;
+    volatile float32_t adc2F32;
     float32_t dacF32 = -0.5;
     uint32_t dacWaveCounter = 0;
     volatile uint32_t perfCounter = 0;
@@ -79,7 +101,9 @@ static void pidTask(void *_) {
 
         /* ADC Acquisition.*/
         adcQ = dn10b_to_q15(adcRead(CH1));
+        adc2Q = dn10b_to_q15(adcRead(CH2));
         adcF32 = q15_to_float(adcQ); 
+        adc2F32 = q15_to_float(adc2Q); 
 
         /* Reference calculation. */
         if(dacWaveCounter++ == (SAMPLING_FREQ_HZ / WVFM_FREQ_HZ / 2)) {
@@ -88,7 +112,8 @@ static void pidTask(void *_) {
         }
         
         /* PID Compute. */
-        pidOutputF32 = PIDController_Update(&pid, dacF32, adcF32);
+        // pidOutputF32 = PIDController_Update(&pid, dacF32, adcF32);
+        pidOutputF32 = PPController_compute(&pp_cnt, adc2F32, adcF32, dacF32);
 
         /* DAC Update & Data Transfer.*/
         dacDn = float_to_dn10b(pidOutputF32); 
@@ -96,7 +121,7 @@ static void pidTask(void *_) {
 
         /* Samples UART Publishing.*/
         data_publisher_update_samples(&data_publisher,
-                                      adcQ, float_to_q15(dacF32)); //   ;
+                                      adcQ, float_to_q15(pidOutputF32)); //   ;
 
         /* Delay to ensure loop frequency. */ 
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(1000 / SAMPLING_FREQ_HZ));
