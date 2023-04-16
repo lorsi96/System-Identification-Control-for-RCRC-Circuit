@@ -12,7 +12,7 @@
 #define WVFM_FREQ_HZ 10
 #define PRBS_FREQ_HZ 100
 
-static int16_t DAC_VALUES[] = {0x100, 0x300} ;
+static int16_t DAC_VALUES[] = {0x100, 0x300};
 static uint8_t dac_i = 0;
 static int16_t last_dac = 0x100;
 
@@ -53,8 +53,8 @@ int runStepResponseApp(void) {
     dacConfig(DAC_ENABLE);
 
     /* Task creation. */
-    xTaskCreate(squareWaveGenTask, "waveformTask", configMINIMAL_STACK_SIZE, NULL,
-                tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(squareWaveGenTask, "waveformTask", configMINIMAL_STACK_SIZE,
+                NULL, tskIDLE_PRIORITY + 1, NULL);
     xTaskCreate(systemIdentificationTask, "systemIdentificationTask",
                 configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
     vTaskStartScheduler();

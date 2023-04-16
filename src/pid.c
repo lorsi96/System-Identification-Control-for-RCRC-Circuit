@@ -1,4 +1,5 @@
 #include "pid.h"
+
 #include "math.h"
 
 void PIDController_Init(PIDController *pid) {
@@ -14,17 +15,16 @@ void PIDController_Init(PIDController *pid) {
 
 float PIDController_Update(PIDController *pid, float setpoint,
                            float measurement) {
-
-    if(pid->bypassPid) {
+    if (pid->bypassPid) {
         return setpoint;
     }
-	
+
     /*
      * Error signal
      */
     float error = setpoint - measurement;
 
-    if(fabs(error) < pid->deadZone) {
+    if (fabs(error) < pid->deadZone) {
         return pid->out;
     }
 
