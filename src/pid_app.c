@@ -13,6 +13,7 @@
 #define WVFM_FREQ_HZ 10
 #define PRBS_FREQ_HZ 100
 
+static const float R1 = 10e3, R2 = 10e3, C1 = 100e-9;
 
 
 typedef struct {
@@ -90,9 +91,11 @@ static void pidTask(void *_) {
     float32_t pidOutputF32;
     volatile float32_t adcF32;
     volatile float32_t adc2F32;
+    volatile float32_t adc2F32_hat = 0.0;
     float32_t dacF32 = -0.5;
     uint32_t dacWaveCounter = 0;
     volatile uint32_t perfCounter = 0;
+    bool est_init = true;
 
     cyclesCounterInit(EDU_CIAA_NXP_CLOCK_SPEED);
     for (;;) {
@@ -110,10 +113,18 @@ static void pidTask(void *_) {
             dacF32 = -dacF32;
             dacWaveCounter = 0;
         }
+
+        if(est_init) {
+            est_init = false;
+            adc2F32_hat = adcF32;
+        }
+
         
         /* PID Compute. */
         // pidOutputF32 = PIDController_Update(&pid, dacF32, adcF32);
-        pidOutputF32 = PPController_compute(&pp_cnt, adc2F32, adcF32, dacF32);
+        // pidOutputF32 = PPController_compute(&pp_cnt, adc2F32, adcF32, dacF32);
+        pidOutputF32 = PPController_compute(&pp_cnt, adc2F32_hat, adcF32, dacF32);
+        adc2F32_hat = (0.19767007 * adc2F32_hat) + (adcF32 *  0.34000453) + (dacF32 * 0.4623254);
 
         /* DAC Update & Data Transfer.*/
         dacDn = float_to_dn10b(pidOutputF32); 
@@ -121,7 +132,7 @@ static void pidTask(void *_) {
 
         /* Samples UART Publishing.*/
         data_publisher_update_samples(&data_publisher,
-                                      adcQ, float_to_q15(pidOutputF32)); //   ;
+                                      adcQ, float_to_q15(adc2F32_hat - adc2F32)); //   ;
 
         /* Delay to ensure loop frequency. */ 
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(1000 / SAMPLING_FREQ_HZ));
