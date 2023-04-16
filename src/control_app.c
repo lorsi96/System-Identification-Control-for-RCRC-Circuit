@@ -7,6 +7,7 @@
 #include "arm_math.h"
 #include "data_publisher.h"
 #include "pid.h"
+#include "unit_conversions.h"
 #include "sapi.h"
 #include "task.h"
 
@@ -20,6 +21,7 @@
 
 #define CNT_TYPE CNT_STATE_OBSERVER
 
+/* ***************************** Pole Placement **************************** */
 struct {
     float32_t a00;
     float32_t a01;
@@ -35,36 +37,15 @@ typedef struct {
     float32_t k0;
 } PPController_t;
 
+PPController_t pp_cnt = {.K = {0.37964295, 0.60778899},
+                         .k0 = 1.9874319426885374};
+
 float32_t PPController_compute(PPController_t* self, float32_t x1, float32_t x2,
                                float32_t r) {
     return r * self->k0 - (self->K[0] * x1 + self->K[1] * x2);
 }
 
-PPController_t pp_cnt = {.K = {0.37964295, 0.60778899},
-                         .k0 = 1.9874319426885374};
-
-inline static q15_t dn10b_to_q15(uint16_t dn) {
-    return ((q15_t)dn - 512) << 6;  // -1 to 1
-}
-
-inline static float q15_to_float(q15_t dn) {
-    float ret;
-    arm_q15_to_float(&dn, &ret, 1);
-    return ret;
-}
-
-inline static float float_to_q15(float fp) {
-    q15_t ret;
-    arm_float_to_q15(&fp, &ret, 1);
-    return ret;
-}
-
-static uint16_t float_to_dn10b(float val) {
-    q15_t ret;
-    arm_float_to_q15(&val, &ret, 1);
-    volatile uint16_t res = (ret >> 6) + 512;
-    return res;
-}
+/* ********************************** PID ********************************** */
 
 static PIDController pid = {
     .bypassPid = false,
@@ -89,20 +70,24 @@ static PIDController pid = {
     .out = 0.0,
 };
 
+/* ************************************************************************* */
+/*                                  Program                                  */
+/* ************************************************************************* */
+
 static void controlTask(void* _) {
     static data_publisher_t data_publisher;
     data_publisher_init(&data_publisher, SAMPLING_FREQ_HZ);
     TickType_t lastWakeTime = xTaskGetTickCount();
-    volatile uint32_t dacDn = 0;
-    volatile q15_t adcQ;
-    volatile q15_t adc2Q;
+    uint32_t dacDn = 0;
+    q15_t adcQ;
+    q15_t adc2Q;
     float32_t controlOutputF32;
-    volatile float32_t adcF32;
-    volatile float32_t adc2F32;
-    volatile float32_t adc2F32_hat = 0.0;
+    float32_t adcF32;
+    float32_t adc2F32;
+    float32_t adc2F32_hat = 0.0;
     float32_t dacF32 = -0.5;
     uint32_t dacWaveCounter = 0;
-    volatile uint32_t perfCounter = 0;
+    uint32_t perfCounter = 0;
     bool est_init = true;
 
     cyclesCounterInit(EDU_CIAA_NXP_CLOCK_SPEED);
@@ -120,11 +105,6 @@ static void controlTask(void* _) {
         if (dacWaveCounter++ == (SAMPLING_FREQ_HZ / WVFM_FREQ_HZ / 2)) {
             dacF32 = -dacF32;
             dacWaveCounter = 0;
-        }
-
-        if (est_init) {
-            est_init = false;
-            adc2F32_hat = adcF32;
         }
 
 #if CNT_TYPE == CNT_PID

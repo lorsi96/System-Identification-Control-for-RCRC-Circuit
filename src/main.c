@@ -3,6 +3,6 @@
 #include "step_response_app.h"
 
 #define APP_TARGET \
-    runControlApp  // runStepResponseApp // runPidApp // runPidApp  //
+    runControlApp  // runStepResponseApp // runIdentificationApp
 
 int main() { APP_TARGET(); }
